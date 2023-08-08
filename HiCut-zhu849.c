@@ -1,9 +1,14 @@
 #define _CRT_SECURE_NO_WARNINGS
+
+#include "HiCut-zhu849.h"
+
 #include<stdlib.h>
 #include<stdio.h>
 #include<string.h>
 #include<math.h>
 #include<limits.h>
+
+#include "data_ops.h"
 
 #define SPFAC 64
 #define BINTH 16
@@ -16,50 +21,6 @@ static __inline__ unsigned long long rdtsc(void)
 	return ((unsigned long long)lo) | (((unsigned long long)hi) << 32);
 }
 
-enum fiveDim{
-	NONE,
-	SRCIP,
-	DESIP,
-	SRCPORT,
-	DESPORT,
-	PROTOCOL
-};
-////////////////////////////////////////////////////////////////////////////////////
-struct ENTRY{
-	unsigned int src_ip;
-	unsigned char src_len;
-	unsigned int des_ip;
-	unsigned char des_len;
-	unsigned int src_port_start;
-	unsigned int src_port_end;
-	unsigned int des_port_start;
-	unsigned int des_port_end;
-	unsigned int protocol;
-};
-////////////////////////////////////////////////////////////////////////////////////
-struct list{
-	unsigned int port;
-	struct list *left,*right;
-};
-typedef struct list node;
-typedef node *btrie;
-////////////////////////////////////////////////////////////////////////////////////
-struct bucket {
-	enum fiveDim cut_dim;
-	unsigned char bit_length;
-	unsigned int *index_array;
-	unsigned int arraySize;
-	struct bucket *child;
-	//record how many bit had check
-	unsigned char src_addr_had_check;
-	unsigned char des_addr_had_check;
-	unsigned char src_port_had_check;
-	unsigned char des_port_had_check;
-	unsigned char ptc_had_check;
-};
-typedef struct bucket bnode;
-typedef bnode *ctrie;
-////////////////////////////////////////////////////////////////////////////////////
 /*global variables*/
 ctrie root;
 struct ENTRY *table;
@@ -763,6 +724,7 @@ int main(int argc,char *argv[]){
 	char filename[50] = "8k.txt";
 	set_table(argv[1]);
 	set_query(argv[2]);
+	printf("Building tree\n");
 	begin = rdtsc();
 	create();
 	cut(root);
@@ -775,7 +737,16 @@ int main(int argc,char *argv[]){
 	printf("dim count:\n");
 	for (i = 0; i < 5; i++)
 		printf("	%d\n", dim_count[i]);
-	
+
+	printf("Serializing tree\n");
+	FILE *fp = fopen("hicut-tree.tmp", "wb");
+	if (fp == NULL) {
+		printf("Error: cannot open serialization file\n");
+	} else {
+		hicut_serialize(fp, root, table);
+		fclose(fp);
+	}
+
 	shuffle(query, num_query);
 	
 	for (j = 0; j < 100; j++) {
