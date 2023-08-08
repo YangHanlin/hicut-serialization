@@ -10,7 +10,7 @@
 
 #include "data_ops.h"
 
-#define SPFAC 64
+#define SPFAC 8
 #define BINTH 16
 ////////////////////////////////////////////////////////////////////////////////////
 
@@ -629,13 +629,20 @@ void cut(ctrie p) {
 	}
 }
 ////////////////////////////////////////////////////////////////////////////////////
-void search(unsigned int src_ip, unsigned int des_ip, unsigned int src_port, unsigned int des_port, unsigned int protocol) {
+int search(unsigned int src_ip, unsigned int des_ip, unsigned int src_port,
+	   unsigned int des_port, unsigned int protocol)
+{
 	ctrie ptr = root;
 	int find = 0;
 	int target = -1;
 	unsigned int index;
 	
 	while (find != 1) {
+		// Return error if current node is malformed (not sure why)
+		if (ptr->cut_dim != NONE && ptr->child == NULL) {
+			return -1;
+		}
+
 		if (ptr->cut_dim == SRCIP) {
 			index = src_ip << ptr->src_addr_had_check >> (32 - ptr->bit_length);
 			ptr = &(ptr->child[index]);
@@ -670,6 +677,8 @@ void search(unsigned int src_ip, unsigned int des_ip, unsigned int src_port, uns
 		else
 			break;
 	}
+
+	return 0;
 	/*
 	if (target == -1)
 		printf("not find\n");
@@ -695,7 +704,7 @@ void CountClock()
 
 	for (i = 0; i < 50; i++)
 	{
-		printf("%d\n", NumCntClock[i]);
+		printf("%2d: %5u%c", i, NumCntClock[i], "\n\t"[i % 10 != 9]);
 	}
 	return;
 }
@@ -752,11 +761,19 @@ int main(int argc,char *argv[]){
 	for (j = 0; j < 100; j++) {
 		//printf("loop: %d\n",j);
 		for (i = 0; i < num_query; i++) {
+			int ret;
+			unsigned long long time_elapsed;
+
 			begin = rdtsc();
-			search(query[i].src_ip, query[i].des_ip, query[i].src_port_start, query[i].des_port_start, query[i].protocol); //bug edited
+			ret = search(query[i].src_ip, query[i].des_ip,
+				     query[i].src_port_start,
+				     query[i].des_port_start,
+				     query[i].protocol); //bug edited
 			end = rdtsc();
 			//printf("id: %d\n",i);
 			//printf("%d\n",(end - begin));
+			time_elapsed = ret < 0 ? (unsigned long long)-1 :
+						 end - begin;
 			if (clock[i] > (end - begin))
 				clock[i] = (end - begin);
 		}
