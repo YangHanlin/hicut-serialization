@@ -2,7 +2,7 @@ CC_OPTS = -std=gnu11 -Wall -g
 
 .PHONY: all test clean compile_commands.json
 
-all: hicut test_rules
+all: hicut test_rules trace
 
 test: all
 	./hicut test_rules trace
@@ -28,3 +28,7 @@ data_ops.o: data_ops.c data_ops.h
 test_rules: ruleset/acl1_100k Makefile
 	cat /dev/null > test_rules
 	tail -n 1000 ruleset/acl1_100k >> test_rules
+
+trace: scripts/tracegen.py Makefile
+	cat /dev/null > trace
+	python3 scripts/tracegen.py 100000 0 >> trace

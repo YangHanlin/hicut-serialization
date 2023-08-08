@@ -92,5 +92,6 @@ tags
 ### Project specific ###
 hicut
 test_rules
+trace
 compile_commands.json
 *.tmp
