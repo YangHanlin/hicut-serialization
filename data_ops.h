@@ -8,33 +8,23 @@
 #include "HiCut-zhu849.h"
 
 /**
- * Serialized data format = data_header + custom_data[]
- * custom_data = custom_data_header + hicut_node_header + hicut_rules + hicut_children
+ * Serialized data format = data_header + custom_data_rule[] + custom_data_node[]
+ * custom_data_rule = custom_data_header (type = HICUT_RULE) + hicut_rule
+ * custom_data_node = custom_data_header (type = HICUT_NODE) + hicut_node_header + hicut_node_rules + hicut_node_children
  */
 
 struct data_header {
 	uint32_t data_num;
 };
 
+enum custom_data_type {
+	HICUT_RULE,
+	HICUT_NODE,
+};
+
 struct custom_data_header {
 	uint32_t custom_size;
-};
-
-enum hicut_dimension {
-	HICUT_NONE,
-	HICUT_SRCIP,
-	HICUT_DESIP,
-	HICUT_SRCPORT,
-	HICUT_DESPORT,
-	HICUT_PROTOCOL
-};
-
-struct hicut_node_header {
-	enum hicut_dimension cut_dim;
-	uint8_t bit_length;
-	uint8_t src_addr_has_check : 1, des_addr_has_check : 1,
-		src_port_has_check : 1, des_port_has_check : 1,
-		ptc_has_check : 1;
+	enum custom_data_type type;
 };
 
 struct hicut_rule {
@@ -49,17 +39,34 @@ struct hicut_rule {
 	uint8_t protocol;
 };
 
-struct hicut_rules {
-	uint32_t count;
-	struct hicut_rule data[];
+enum hicut_dimension {
+	HICUT_NONE,
+	HICUT_SRCIP,
+	HICUT_DESIP,
+	HICUT_SRCPORT,
+	HICUT_DESPORT,
+	HICUT_PROTOCOL,
 };
 
-struct hicut_children {
+struct hicut_node_header {
+	enum hicut_dimension cut_dim;
+	uint8_t bit_length;
+	uint8_t src_addr_has_check : 1, des_addr_has_check : 1,
+		src_port_has_check : 1, des_port_has_check : 1,
+		ptc_has_check : 1;
+};
+
+struct hicut_node_rules {
 	uint32_t count;
 	uint32_t indexes[];
 };
 
-void hicut_serialize(FILE *fp, ctrie root, struct ENTRY *table);
+struct hicut_node_children {
+	uint32_t count;
+	uint32_t indexes[];
+};
+
+void hicut_serialize(FILE *fp, ctrie root, struct ENTRY *table, int num_entry);
 
 void hicut_deserialize(FILE *fp, ctrie *root, struct ENTRY **table,
 		       int *num_entry);

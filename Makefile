@@ -5,7 +5,8 @@ CC_OPTS = -std=gnu11 -Wall -g
 all: hicut test_rules trace
 
 test: all
-	./hicut test_rules trace
+	./hicut serialize test_rules trace
+	./hicut deserialize trace
 
 clean:
 	rm -f *.o *.tmp hicut compile_commands.json test_rules
@@ -25,9 +26,9 @@ HiCut-zhu849.o: HiCut-zhu849.c HiCut-zhu849.h data_ops.h
 data_ops.o: data_ops.c data_ops.h
 	gcc $(CC_OPTS) -c -o data_ops.o data_ops.c
 
-test_rules: ruleset/acl1_100k Makefile
+test_rules: ruleset/fw1_100k Makefile
 	cat /dev/null > test_rules
-	tail -n 1000 ruleset/acl1_100k >> test_rules
+	tail -n 1000 ruleset/fw1_100k >> test_rules
 
 trace: scripts/tracegen.py Makefile
 	cat /dev/null > trace

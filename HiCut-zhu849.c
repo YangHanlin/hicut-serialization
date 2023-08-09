@@ -731,29 +731,46 @@ int main(int argc,char *argv[]){
 	int i,j;
 	int cut_dim;
 	char filename[50] = "8k.txt";
-	set_table(argv[1]);
-	set_query(argv[2]);
-	printf("Building tree\n");
-	begin = rdtsc();
-	create();
-	cut(root);
-	end = rdtsc();
-	printf("Avg. Build Time: %llu\n", (end - begin) / num_entry);
-	printf("SPFAC:%d\n", SPFAC);
-	printf("BINTH:%d\n", BINTH);
-	printf("num of entry:%d\n", num_entry);
-	printf("num of bnode : %d\n", num_bnode);
-	printf("dim count:\n");
-	for (i = 0; i < 5; i++)
-		printf("	%d\n", dim_count[i]);
 
-	printf("Serializing tree\n");
-	FILE *fp = fopen("hicut-tree.tmp", "wb");
-	if (fp == NULL) {
-		printf("Error: cannot open serialization file\n");
+	if (argc < 3) {
+		printf("Usage: %s serialize RULE_FILE QUERY_FILE\n       %s deserialize QUERY_FILE\n",
+		       argv[0], argv[0]);
+		exit(1);
+	} else if (strcmp(argv[1], "serialize") == 0) {
+		set_table(argv[2]);
+		set_query(argv[3]);
+		printf("Building tree\n");
+		begin = rdtsc();
+		create();
+		cut(root);
+		end = rdtsc();
+		printf("Avg. Build Time: %llu\n", (end - begin) / num_entry);
+		printf("SPFAC:%d\n", SPFAC);
+		printf("BINTH:%d\n", BINTH);
+		printf("num of entry:%d\n", num_entry);
+		printf("num of bnode : %d\n", num_bnode);
+		printf("dim count:\n");
+		for (i = 0; i < 5; i++)
+			printf("	%d\n", dim_count[i]);
+
+		printf("Serializing tree\n");
+		FILE *fp = fopen("hicut-tree.tmp", "wb");
+		if (fp == NULL) {
+			printf("Error: cannot open serialization file\n");
+		} else {
+			hicut_serialize(fp, root, table, num_entry);
+			fclose(fp);
+		}
 	} else {
-		hicut_serialize(fp, root, table);
-		fclose(fp);
+		printf("Deserializing tree\n");
+		FILE *fp = fopen("hicut-tree.tmp", "rb");
+		if (fp == NULL) {
+			printf("Error: cannot open serialization file\n");
+			exit(1);
+		} else {
+			hicut_deserialize(fp, &root, &table, &num_entry);
+			fclose(fp);
+		}
 	}
 
 	shuffle(query, num_query);
