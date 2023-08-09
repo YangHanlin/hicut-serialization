@@ -11,7 +11,7 @@ def generate(query_count: int, random_seed: int) -> Iterable[str]:
         src_ip, dest_ip = map(lambda b: socket.inet_ntop(socket.AF_INET, b), map(lambda _: r.randbytes(4), range(2)))
         src_port, dest_port = map(lambda _: r.randint(1, 65535), range(2))
         proto = r.randint(1, 255)
-        yield f'@{src_ip}/32\t@{dest_ip}/32\t{src_port} : {src_port}\t{dest_port} : {dest_port}\t0x{proto:02x}/0x{proto:02x}\t0x0000/0x0000\t'
+        yield f'@{src_ip}/32\t{dest_ip}/32\t{src_port} : {src_port}\t{dest_port} : {dest_port}\t0x{proto:02x}/0x{proto:02x}\t0x0000/0x0000\t'
 
 def main():
     if len(sys.argv) < 2:
