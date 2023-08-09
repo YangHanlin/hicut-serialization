@@ -42,11 +42,11 @@ struct hicut_rule {
 	uint8_t src_len;
 	uint32_t des_ip;
 	uint8_t des_len;
-	uint32_t src_port_start;
-	uint32_t src_port_end;
-	uint32_t des_port_start;
-	uint32_t des_port_end;
-	uint32_t protocol;
+	uint16_t src_port_start;
+	uint16_t src_port_end;
+	uint16_t des_port_start;
+	uint16_t des_port_end;
+	uint8_t protocol;
 };
 
 struct hicut_rules {
