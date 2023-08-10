@@ -23,7 +23,7 @@ struct sizes_and_counts {
 static struct sizes_and_counts max_size;
 #endif
 
-void hicut_serialize_tree(FILE *fp, ctrie node, uint32_t *node_index)
+void _hicut_serialize_tree(FILE *fp, ctrie node, uint32_t *current_node_count)
 {
 	struct custom_data_header header = {
 		.custom_size = 0,
@@ -36,7 +36,7 @@ void hicut_serialize_tree(FILE *fp, ctrie node, uint32_t *node_index)
 		.src_addr_had_check = node->src_addr_had_check,
 		.des_addr_had_check = node->des_addr_had_check,
 		.src_port_had_check = node->src_port_had_check,
-		.des_port_had_check = node->des_addr_had_check,
+		.des_port_had_check = node->des_port_had_check,
 		.ptc_had_check = node->ptc_had_check,
 	};
 	header.custom_size += sizeof(node_header);
@@ -62,8 +62,8 @@ void hicut_serialize_tree(FILE *fp, ctrie node, uint32_t *node_index)
 	struct hicut_node_children *children = malloc(children_size);
 	children->count = child_count;
 	for (uint32_t i = 0; i < child_count; ++i) {
-		children->indexes[i] = *node_index;
-		hicut_serialize_tree(fp, &node->child[i], node_index);
+		_hicut_serialize_tree(fp, &node->child[i], current_node_count);
+		children->indexes[i] = *current_node_count - 1;
 	}
 	header.custom_size += children_size;
 
@@ -85,7 +85,14 @@ void hicut_serialize_tree(FILE *fp, ctrie node, uint32_t *node_index)
 	free(rules);
 	free(children);
 
-	++*node_index;
+	++*current_node_count;
+}
+
+uint32_t hicut_serialize_tree(FILE *fp, ctrie root)
+{
+	uint32_t node_count = 0;
+	_hicut_serialize_tree(fp, root, &node_count);
+	return node_count;
 }
 
 void hicut_serialize_rules(FILE *fp, struct ENTRY *table, int num_entry)
@@ -117,7 +124,6 @@ void hicut_serialize(FILE *fp, ctrie root, struct ENTRY *table, int num_entry)
 	struct data_header header = {
 		.data_num = 0,
 	};
-	uint32_t node_count = 0;
 
 #if HICUT_DEBUG == 1
 	memset(&max_size, 0, sizeof(max_size));
@@ -126,7 +132,7 @@ void hicut_serialize(FILE *fp, ctrie root, struct ENTRY *table, int num_entry)
 	fseek(fp, sizeof(header), SEEK_CUR);
 	hicut_serialize_rules(fp, table, num_entry);
 	header.data_num += num_entry;
-	hicut_serialize_tree(fp, root, &node_count);
+	uint32_t node_count = hicut_serialize_tree(fp, root);
 	header.data_num += node_count;
 
 #if HICUT_DEBUG == 1
@@ -228,15 +234,18 @@ void hicut_deserialize_tree(FILE *fp, ctrie *root, uint32_t count)
 		node->ptc_had_check = node_header.ptc_had_check;
 
 		fread(&rule_count, sizeof(rule_count), 1, fp);
-		rule_indexes = malloc(sizeof(uint32_t) * rule_count);
-		fread(rule_indexes, sizeof(uint32_t), rule_count, fp);
 		node->arraySize = rule_count;
-		node->index_array = malloc(sizeof(unsigned int) * rule_count);
-		for (uint32_t j = 0; j < rule_count; ++j) {
-			node->index_array[j] = rule_indexes[j];
+		if (rule_count > 0) {
+			rule_indexes = malloc(sizeof(uint32_t) * rule_count);
+			fread(rule_indexes, sizeof(uint32_t), rule_count, fp);
+			node->index_array =
+				malloc(sizeof(unsigned int) * rule_count);
+			for (uint32_t j = 0; j < rule_count; ++j) {
+				node->index_array[j] = rule_indexes[j];
+			}
+			free(rule_indexes);
+			rule_indexes = NULL;
 		}
-		free(rule_indexes);
-		rule_indexes = NULL;
 
 		fread(child_counts + i, sizeof(uint32_t), 1, fp);
 		child_indexes[i] = malloc(sizeof(uint32_t) * child_counts[i]);

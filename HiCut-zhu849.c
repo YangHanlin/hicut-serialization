@@ -13,7 +13,7 @@
 #define SPFAC 8
 #define BINTH 16
 
-#define HICUT_DUMP_TREE 1
+#define HICUT_DUMP_TREE 0
 ////////////////////////////////////////////////////////////////////////////////////
 
 static __inline__ unsigned long long rdtsc(void)
