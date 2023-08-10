@@ -6,6 +6,11 @@
 
 #define HICUT_DEBUG 1
 
+struct hicut_rule_list_node {
+	struct hicut_rule data;
+	struct hicut_rule_list_node *next;
+};
+
 #if HICUT_DEBUG == 1
 struct sizes_and_counts {
 	uint32_t node_custom_size;
@@ -136,8 +141,70 @@ void hicut_serialize(FILE *fp, ctrie root, struct ENTRY *table, int num_entry)
 	fwrite(&header, sizeof(header), 1, fp);
 }
 
+void hicut_deserialize_rules(FILE *fp, struct ENTRY **table, int *num_entry)
+{
+	struct custom_data_header header = { 0 };
+	uint32_t count = 0;
+	struct hicut_rule_list_node *head = malloc(sizeof(
+					    struct hicut_rule_list_node)),
+				    *tail = head;
+	head->next = NULL;
+
+	while (1) {
+		fread(&header, sizeof(header), 1, fp);
+		if (header.type != HICUT_RULE) {
+			break;
+		}
+
+		if (header.custom_size != sizeof(struct hicut_rule)) {
+			// Unexpected error
+		}
+
+		tail->next = malloc(sizeof(struct hicut_rule_list_node));
+		tail = tail->next;
+		tail->next = NULL;
+		fread(&tail->data, sizeof(tail->data), 1, fp);
+		++count;
+	}
+	fseek(fp, -sizeof(header), SEEK_CUR);
+
+#ifdef HICUT_DEBUG
+	printf("Found %u rules in total\n", count);
+#endif
+
+	*num_entry = count;
+	*table = malloc(sizeof(struct ENTRY) * count);
+	for (uint32_t i = 0; i < count; ++i) {
+		struct hicut_rule *rule = &head->next->data;
+		struct ENTRY *entry = *table + i;
+		entry->src_ip = rule->src_ip;
+		entry->src_len = rule->src_len;
+		entry->des_ip = rule->des_ip;
+		entry->des_len = rule->des_len;
+		entry->src_port_start = rule->src_port_start;
+		entry->src_port_end = rule->src_port_end;
+		entry->des_port_start = rule->des_port_start;
+		entry->des_port_end = rule->des_port_end;
+
+		struct hicut_rule_list_node *t = head->next;
+		free(head);
+		head = t;
+	}
+}
+
+void hicut_deserialize_tree(FILE *fp, ctrie *root, uint32_t count)
+{
+	// TODO:
+}
+
 void hicut_deserialize(FILE *fp, ctrie *root, struct ENTRY **table,
 		       int *num_entry)
 {
-	return;
+	struct data_header header = {
+		.data_num = 0,
+	};
+	fread(&header, sizeof(header), 1, fp);
+
+	hicut_deserialize_rules(fp, table, num_entry);
+	hicut_deserialize_tree(fp, root, header.data_num - *num_entry);
 }

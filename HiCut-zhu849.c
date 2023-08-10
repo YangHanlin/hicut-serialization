@@ -762,6 +762,7 @@ int main(int argc,char *argv[]){
 			fclose(fp);
 		}
 	} else {
+		set_query(argv[2]);
 		printf("Deserializing tree\n");
 		FILE *fp = fopen("hicut-tree.tmp", "rb");
 		if (fp == NULL) {
