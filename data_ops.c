@@ -33,11 +33,11 @@ void hicut_serialize_tree(FILE *fp, ctrie node, uint32_t *node_index)
 	struct hicut_node_header node_header = {
 		.cut_dim = node->cut_dim,
 		.bit_length = node->bit_length,
-		.src_addr_has_check = node->src_addr_had_check,
-		.des_addr_has_check = node->des_addr_had_check,
-		.src_port_has_check = node->src_port_had_check,
-		.des_port_has_check = node->des_addr_had_check,
-		.ptc_has_check = node->ptc_had_check,
+		.src_addr_had_check = node->src_addr_had_check,
+		.des_addr_had_check = node->des_addr_had_check,
+		.src_port_had_check = node->src_port_had_check,
+		.des_port_had_check = node->des_addr_had_check,
+		.ptc_had_check = node->ptc_had_check,
 	};
 	header.custom_size += sizeof(node_header);
 
@@ -194,7 +194,72 @@ void hicut_deserialize_rules(FILE *fp, struct ENTRY **table, int *num_entry)
 
 void hicut_deserialize_tree(FILE *fp, ctrie *root, uint32_t count)
 {
-	// TODO:
+	struct custom_data_header header = { 0 };
+	struct hicut_node_header node_header = { 0 };
+	uint32_t rule_count = 0, *rule_indexes = NULL;
+	bnode *children = NULL;
+
+	size_t child_counts_size = sizeof(uint32_t) * count;
+	uint32_t *child_counts = malloc(child_counts_size);
+	memset(child_counts, 0, child_counts_size);
+
+	size_t child_indexes_size = sizeof(uint32_t *) * count;
+	uint32_t **child_indexes = malloc(child_indexes_size);
+	memset(child_indexes, 0, child_indexes_size);
+
+	size_t nodes_size = sizeof(bnode) * count;
+	bnode *nodes = malloc(nodes_size);
+	memset(nodes, 0, nodes_size);
+
+	for (uint32_t i = 0; i < count; ++i) {
+		fread(&header, sizeof(header), 1, fp);
+		if (header.type != HICUT_NODE) {
+			// Unexpected error
+		}
+
+		fread(&node_header, sizeof(node_header), 1, fp);
+		bnode *node = nodes + i;
+		node->cut_dim = node_header.cut_dim;
+		node->bit_length = node_header.bit_length;
+		node->src_addr_had_check = node_header.src_addr_had_check;
+		node->des_addr_had_check = node_header.des_addr_had_check;
+		node->src_port_had_check = node_header.src_port_had_check;
+		node->des_port_had_check = node_header.des_port_had_check;
+		node->ptc_had_check = node_header.ptc_had_check;
+
+		fread(&rule_count, sizeof(rule_count), 1, fp);
+		rule_indexes = malloc(sizeof(uint32_t) * rule_count);
+		fread(rule_indexes, sizeof(uint32_t), rule_count, fp);
+		node->arraySize = rule_count;
+		node->index_array = malloc(sizeof(unsigned int) * rule_count);
+		for (uint32_t j = 0; j < rule_count; ++j) {
+			node->index_array[j] = rule_indexes[j];
+		}
+		free(rule_indexes);
+		rule_indexes = NULL;
+
+		fread(child_counts + i, sizeof(uint32_t), 1, fp);
+		child_indexes[i] = malloc(sizeof(uint32_t) * child_counts[i]);
+		fread(child_indexes[i], sizeof(uint32_t), child_counts[i], fp);
+	}
+
+	// It's assumed that every node appears before its parent
+	for (uint32_t i = 0; i < count; ++i) {
+		if (child_counts[i] == 0) {
+			continue;
+		}
+		children = malloc(sizeof(bnode) * child_counts[i]);
+		for (uint32_t j = 0; j < child_counts[i]; ++j) {
+			memcpy(children + j, nodes + child_indexes[i][j],
+			       sizeof(bnode));
+		}
+		nodes[i].child = children;
+	}
+	*root = nodes + count - 1;
+
+#ifdef HICUT_DEBUG
+	printf("Deserialized %u tree nodes in total\n", count);
+#endif
 }
 
 void hicut_deserialize(FILE *fp, ctrie *root, struct ENTRY **table,

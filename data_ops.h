@@ -13,6 +13,8 @@
  * custom_data_node = custom_data_header (type = HICUT_NODE) + hicut_node_header + hicut_node_rules + hicut_node_children
  */
 
+#pragma pack(push, 1)
+
 struct data_header {
 	uint32_t data_num;
 };
@@ -51,9 +53,11 @@ enum hicut_dimension {
 struct hicut_node_header {
 	enum hicut_dimension cut_dim;
 	uint8_t bit_length;
-	uint8_t src_addr_has_check : 1, des_addr_has_check : 1,
-		src_port_has_check : 1, des_port_has_check : 1,
-		ptc_has_check : 1;
+	uint8_t src_addr_had_check;
+	uint8_t des_addr_had_check;
+	uint8_t src_port_had_check;
+	uint8_t des_port_had_check;
+	uint8_t ptc_had_check;
 };
 
 struct hicut_node_rules {
@@ -65,6 +69,8 @@ struct hicut_node_children {
 	uint32_t count;
 	uint32_t indexes[];
 };
+
+#pragma pack(pop)
 
 void hicut_serialize(FILE *fp, ctrie root, struct ENTRY *table, int num_entry);
 

@@ -5,8 +5,8 @@ CC_OPTS = -std=gnu11 -Wall -g
 all: hicut test_rules trace
 
 test: all
-	./hicut serialize test_rules trace
-	./hicut deserialize trace
+	./hicut serialize test_rules trace 2> serialize-tree.tmp
+	./hicut deserialize trace 2> deserialize-tree.tmp
 
 clean:
 	rm -f *.o *.tmp hicut compile_commands.json test_rules

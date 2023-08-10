@@ -12,6 +12,8 @@
 
 #define SPFAC 8
 #define BINTH 16
+
+#define HICUT_DUMP_TREE 1
 ////////////////////////////////////////////////////////////////////////////////////
 
 static __inline__ unsigned long long rdtsc(void)
@@ -726,6 +728,80 @@ void shuffle(struct ENTRY *array, int n) {
 		temp->protocol = array[j].protocol;
 	}
 }
+
+void _indent(FILE *fp, int indent)
+{
+	for (int i = 0; i < indent; ++i) {
+		fprintf(fp, "  ");
+	}
+}
+
+void _dump_tree(FILE *fp, ctrie tree, int indent)
+{
+	_indent(fp, indent);
+	fprintf(fp, "bucket {\n");
+
+	_indent(fp, indent + 1);
+	fprintf(fp, "cut_dim = %d,\n", tree->cut_dim);
+
+	_indent(fp, indent + 1);
+	fprintf(fp, "bit_length = %d,\n", tree->bit_length);
+
+	if (tree->index_array == NULL) {
+		_indent(fp, indent + 1);
+		fprintf(fp, "index_array = NULL,\n");
+	} else {
+		_indent(fp, indent + 1);
+		fprintf(fp, "index_array = (%u) [\n", tree->arraySize);
+		for (int i = 0; i < tree->arraySize; ++i) {
+			_indent(fp, indent + 2);
+			fprintf(fp, "%d,\n", tree->index_array[i]);
+		}
+		_indent(fp, indent + 1);
+		fprintf(fp, "],\n");
+	}
+
+	_indent(fp, indent + 1);
+	fprintf(fp, "arraySize = %d,\n", tree->arraySize);
+
+	if (tree->child == NULL) {
+		_indent(fp, indent + 1);
+		fprintf(fp, "child = NULL,\n");
+	} else {
+		_indent(fp, indent + 1);
+		unsigned long child_count = 1 << tree->bit_length;
+		fprintf(fp, "child = (%lu) [\n", child_count);
+		for (int i = 0; i < child_count; ++i) {
+			_dump_tree(fp, tree->child + i, indent + 2);
+		}
+		_indent(fp, indent + 1);
+		fprintf(fp, "],\n");
+	}
+
+	_indent(fp, indent + 1);
+	fprintf(fp, "src_addr_had_check = %d,\n", tree->src_addr_had_check);
+
+	_indent(fp, indent + 1);
+	fprintf(fp, "des_addr_had_check = %d,\n", tree->des_addr_had_check);
+
+	_indent(fp, indent + 1);
+	fprintf(fp, "src_port_had_check = %d,\n", tree->src_port_had_check);
+
+	_indent(fp, indent + 1);
+	fprintf(fp, "des_port_had_check = %d,\n", tree->des_port_had_check);
+
+	_indent(fp, indent + 1);
+	fprintf(fp, "ptc_had_check = %d,\n", tree->ptc_had_check);
+
+	_indent(fp, indent);
+	fprintf(fp, "},\n");
+}
+
+void dump_tree(ctrie tree)
+{
+	_dump_tree(stderr, tree, 0);
+}
+
 ////////////////////////////////////////////////////////////////////////////////////
 int main(int argc,char *argv[]){
 	int i,j;
@@ -774,14 +850,17 @@ int main(int argc,char *argv[]){
 		}
 	}
 
+#if HICUT_DUMP_TREE == 1
+	printf("Dumping tree\n");
+	dump_tree(root);
+#endif
+
 	shuffle(query, num_query);
 	
 	for (j = 0; j < 100; j++) {
 		//printf("loop: %d\n",j);
 		for (i = 0; i < num_query; i++) {
 			int ret;
-			unsigned long long time_elapsed;
-
 			begin = rdtsc();
 			ret = search(query[i].src_ip, query[i].des_ip,
 				     query[i].src_port_start,
@@ -790,16 +869,25 @@ int main(int argc,char *argv[]){
 			end = rdtsc();
 			//printf("id: %d\n",i);
 			//printf("%d\n",(end - begin));
-			time_elapsed = ret < 0 ? (unsigned long long)-1 :
-						 end - begin;
-			if (clock[i] > (end - begin))
-				clock[i] = (end - begin);
+			if (ret >= 0) {
+				if (clock[i] > (end - begin))
+					clock[i] = (end - begin);
+			}
 		}
 	}
 	total = 0;
-	for (j = 0; j < num_query; j++)
-		total += clock[j];
-	printf("Avg. Search: %lld\n", total / num_query);
+	int valid_num_query = 0;
+	for (j = 0; j < num_query; j++) {
+		if (clock[j] < 10000000) {
+			total += clock[j];
+			++valid_num_query;
+		}
+	}
+	if (valid_num_query > 0) {
+		printf("Avg. Search: %lld\n", total / valid_num_query);
+	} else {
+		printf("Avg. Search: N/A\n");
+	}
 	CountClock();
 	
 	return 0;
