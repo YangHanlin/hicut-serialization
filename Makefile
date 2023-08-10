@@ -9,7 +9,7 @@ test: all
 	./hicut deserialize trace 2> deserialize-tree.tmp
 
 clean:
-	rm -f *.o *.tmp hicut compile_commands.json test_rules
+	rm -f *.o *.tmp hicut compile_commands.json test_rules trace
 
 compile_commands.json:
 	bear --output compile_commands.json.tmp -- make -B all
